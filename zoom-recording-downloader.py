@@ -18,6 +18,7 @@ import os
 import re as regex
 import signal
 import sys as system
+from time import sleep
 
 # installed libraries
 import dateutil.parser as parser
@@ -217,11 +218,25 @@ def list_recordings(email):
         datetime.timedelta(days=30)
     ):
         post_data = get_recordings(email, 300, start, end)
-        response = requests.get(
-            url=f"https://api.zoom.us/v2/users/{email}/recordings",
-            headers=AUTHORIZATION_HEADER,
-            params=post_data
-        )
+        response = None
+        getting_response = True
+        response_backoff_exponent = 5
+        response_backoff_tries = 1
+        while getting_response:
+            response = requests.get(
+                url=f"https://api.zoom.us/v2/users/{email}/recordings",
+                headers=AUTHORIZATION_HEADER,
+                params=post_data
+            )
+            if response.status_code < 200 or response.status_code > 299:
+                # Zoom API documentation: any 2XX response is a success
+                if response.status_code == 429: # Too Many Requests
+                    sleep(response_backoff_tries ** response_backoff_exponent)
+                    response_backoff_tries += 1
+                    continue
+            else:
+                getting_response = False
+
         recordings_data = response.json()
         recordings.extend(recordings_data["meetings"])
 
