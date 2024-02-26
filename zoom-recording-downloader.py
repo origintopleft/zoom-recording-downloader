@@ -231,6 +231,7 @@ def list_recordings(email):
             if response.status_code < 200 or response.status_code > 299:
                 # Zoom API documentation: any 2XX response is a success
                 if response.status_code == 429: # Too Many Requests
+                    print(f"API says back off, waiting {response_backoff_tries ** response_backoff_exponent} seconds...")
                     sleep(response_backoff_tries ** response_backoff_exponent)
                     response_backoff_tries += 1
                     continue
